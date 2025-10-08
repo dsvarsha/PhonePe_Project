@@ -4,7 +4,8 @@ import pandas as pd
 import plotly.express as px
 from pathlib import Path
 
-DATA_DIR = Path(r"C:\PhonePe_Project\analysis_results")
+DATA_DIR = Path("analysis_results")
+
 
 # ---------- Page setup ----------
 st.set_page_config(page_title="📱 PhonePe Business Analytics Dashboard", layout="wide")
