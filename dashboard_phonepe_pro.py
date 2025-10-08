@@ -23,6 +23,8 @@ def load_csvs():
         "insurance": pd.read_csv(DATA_DIR / "top_states_insurance.csv"),
         "districts": pd.read_csv(DATA_DIR / "top_districts_transaction.csv")
     }
+    data["states_txn"].columns = data["states_txn"].columns.str.strip().str.lower()
+
     return data
 
 data = load_csvs()
