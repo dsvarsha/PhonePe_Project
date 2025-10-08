@@ -17,7 +17,7 @@ st.markdown("### Explore transaction, user, and insurance insights across India"
 @st.cache_data
 def load_csvs():
     data = {
-        "states_txn": pd.read_csv(DATA_DIR / "top_states_transaction.csv"),
+        "states_txn": pd.read_csv(DATA_DIR / "top_states_transaction.csv", header=None, names=["index", "state"]),
         "by_category": pd.read_csv(DATA_DIR / "transaction_by_category.csv"),
         "users": pd.read_csv(DATA_DIR / "top_states_users.csv"),
         "insurance": pd.read_csv(DATA_DIR / "top_states_insurance.csv"),
