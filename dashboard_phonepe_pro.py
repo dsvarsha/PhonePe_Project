@@ -6,6 +6,7 @@ from pathlib import Path
 
 DATA_DIR = Path(__file__).parent / "analysis_results"
 
+st.image("banner.png", use_column_width=True)
 
 
 # ---------- Page setup ----------
