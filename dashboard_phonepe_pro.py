@@ -4,12 +4,13 @@ import pandas as pd
 import plotly.express as px
 from pathlib import Path
 
-DATA_DIR = Path("analysis_results")
+DATA_DIR = Path(__file__).parent / "analysis_results"
+
 
 
 # ---------- Page setup ----------
 st.set_page_config(page_title="📱 PhonePe Business Analytics Dashboard", layout="wide")
-st.title("📊 PhonePe Business Analytics — Varsha Suresh")
+st.title("📊 PhonePe Business Analytics — Varsha Sureshkumar")
 
 st.markdown("### Explore transaction, user, and insurance insights across India")
 
@@ -106,5 +107,5 @@ with tab5:
     st.dataframe(df)
 
 st.markdown("---")
-st.caption("Built by Varsha Suresh | ECE | PhonePe Business Analytics Project 2025 ©")
+st.caption("Built by Varsha Sureshkumar | ECE | PhonePe Business Analytics Project 2025 ©")
 
