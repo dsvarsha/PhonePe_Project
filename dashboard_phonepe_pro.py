@@ -282,24 +282,65 @@ elif menu == "4️⃣ Market Expansion":
 # ---------------------------------------------------------------
 # 5️⃣ USER ENGAGEMENT
 # ---------------------------------------------------------------
+# ---------------------------------------------------------------
+# 5️⃣ USER ENGAGEMENT
+# ---------------------------------------------------------------
 elif menu == "5️⃣ User Engagement":
     st.title("👥 User Engagement and Growth Strategy")
 
-    df_user = data["user_device"]
-    if "registered_users" in df_user.columns:
-        df_user["engagement_ratio"] = (df_user["registered_users"] / df_user["registered_users"].max()) * 100
-        fig = px.line(df_user, x="state", y="engagement_ratio", markers=True,
-                      title="User Engagement Ratio by State (%)")
+    df_user = data["user_device"].copy()
+    df_user.columns = df_user.columns.str.strip().str.lower()
+
+    # Rename columns to consistent format
+    rename_map = {
+        "total_registered_users": "registered_users",
+        "total_app_opens": "app_opens",
+        "registereduser": "registered_users",
+        "appopens": "app_opens"
+    }
+    df_user.rename(columns=rename_map, inplace=True)
+
+    # Clean state column
+    if "state" in df_user.columns:
+        df_user["state"] = (
+            df_user["state"]
+            .astype(str)
+            .str.replace('"', '', regex=False)
+            .str.strip()
+        )
+        df_user = df_user[df_user["state"].str.lower() != "null"]
+
+    # Convert numeric columns safely
+    for col in ["registered_users", "app_opens"]:
+        if col in df_user.columns:
+            df_user[col] = pd.to_numeric(df_user[col], errors="coerce")
+
+    # Drop missing rows
+    df_user.dropna(subset=["registered_users"], inplace=True)
+
+    # Engagement ratio = (app_opens / registered_users) * 100
+    if "registered_users" in df_user.columns and "app_opens" in df_user.columns:
+        df_user["engagement_ratio"] = (df_user["app_opens"] / df_user["registered_users"]) * 100
+
+        # Plot line chart for engagement ratio
+        fig = px.line(
+            df_user.sort_values("engagement_ratio", ascending=False),
+            x="state",
+            y="engagement_ratio",
+            markers=True,
+            title="User Engagement Ratio by State (%)"
+        )
         st.plotly_chart(fig, use_container_width=True)
 
-        if not df_user.empty:
-            top_state = df_user.loc[df_user["engagement_ratio"].idxmax()]
-            st.info(
-                f"💡 **Insight:** {top_state['state']} shows the highest engagement ratio "
-                f"({top_state['engagement_ratio']:.2f}%), indicating highly active users."
-            )
+        # Find top state
+        top_state = df_user.loc[df_user["engagement_ratio"].idxmax()]
+        st.info(
+            f"💡 **Insight:** {top_state['state']} has the highest engagement ratio — "
+            f"{top_state['engagement_ratio']:.2f}%, indicating highly active users."
+        )
     else:
-        st.error("⚠️ Missing 'registered_users' column in user data CSV.")
+        st.error("⚠️ Required columns not found: expected both 'registered_users' and 'app_opens'.")
+
 
 # ---------------------------------------------------------------
 # 🧠 INSIGHTS SUMMARY PAGE
