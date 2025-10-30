@@ -8,6 +8,67 @@ import pandas as pd
 import plotly.express as px
 from pathlib import Path
 
+# ---------- Data cleaning helper ----------
+def clean_state_df(df):
+    """
+    Normalize and clean DataFrame with a state column and numeric columns.
+    - lowercase column names
+    - find and standardize state column to 'state'
+    - strip quotes/spaces, convert 'NULL' to NaN and drop NULL states
+    - standardize numeric column names and convert to numeric types
+    """
+    df = df.copy()
+    df.columns = df.columns.str.strip().str.lower()
+
+    # identify state column (common candidates)
+    state_candidates = ["state", "entityname", "state name", "statename"]
+    state_col = None
+    for c in state_candidates:
+        if c in df.columns:
+            state_col = c
+            break
+    if state_col is None:
+        state_col = df.columns[0]   # fallback to first column
+
+    # normalize state text
+    df[state_col] = df[state_col].astype(str).str.replace('"', '', regex=False).str.strip()
+    df[state_col] = df[state_col].replace({"": pd.NA, "null": pd.NA, "none": pd.NA})
+
+    # rename to 'state'
+    if state_col != "state":
+        df.rename(columns={state_col: "state"}, inplace=True)
+
+    # common renames for numeric/value cols
+    rename_map = {
+        "total_value_in_crores": "total_amount",
+        "total_in_crores": "total_amount",
+        "total_value": "total_amount",
+        "total_policies": "policy_count",
+        "total_count": "count",
+        "totalcount": "count",
+        "registered_users_": "registered_users",
+        "registereduser": "registered_users"
+    }
+    for k, v in rename_map.items():
+        if k in df.columns and v not in df.columns:
+            df.rename(columns={k: v}, inplace=True)
+
+    # convert numeric cols to numeric dtype (coerce bad values to NaN)
+    for col in ["total_amount", "policy_count", "count", "registered_users"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # drop rows where state is missing
+    df = df.dropna(subset=["state"])
+
+    # If total_amount exists, drop rows missing it (we can't compute top without value)
+    if "total_amount" in df.columns:
+        df = df.dropna(subset=["total_amount"])
+
+    return df
+# ---------- end helper ----------
+
+
 # ---------------------- PAGE CONFIG ----------------------------
 st.set_page_config(page_title="PhonePe Business Analytics Dashboard", layout="wide")
 
@@ -133,41 +194,34 @@ elif menu == "2️⃣ Device Dominance":
 elif menu == "3️⃣ Insurance Penetration":
     st.title("🧾 Insurance Penetration Across States")
 
-    # Copy the insurance data
+    # load and clean
     df_ins = data["insurance_state"].copy()
+    df_ins = clean_state_df(df_ins)
 
-    # Normalize column names (remove extra spaces, lowercase)
-    df_ins.columns = df_ins.columns.str.strip().str.lower()
-
-    # Rename columns to standardized names
-    rename_map = {
-        "total_value_in_crores": "total_amount",
-        "total_policies": "policy_count",
-    }
-    df_ins.rename(columns=rename_map, inplace=True)
-
-    # Confirm which columns exist
+    # If cleaned dataframe has the needed columns, plot
     if "state" in df_ins.columns and "total_amount" in df_ins.columns:
-        # Plot Top 10 states by value
+        df_plot = df_ins.sort_values("total_amount", ascending=False).head(10)
         fig = px.bar(
-            df_ins.sort_values("total_amount", ascending=False).head(10),
+            df_plot,
             x="state",
             y="total_amount",
             color="total_amount",
             title="Top 10 States by Insurance Premium Value (₹ in Crores)",
-            text_auto=".2s",
+            text_auto=".2s"
         )
         st.plotly_chart(fig, use_container_width=True)
 
-        # Insight card
-        top_state = df_ins.loc[df_ins["total_amount"].idxmax()]
+        # safe top-state extraction
+        top_idx = df_ins["total_amount"].idxmax()
+        top_state = df_ins.loc[top_idx]
+        state_name = top_state.get("state", "Unknown")
+        policy_count = int(top_state["policy_count"]) if "policy_count" in df_ins.columns and not pd.isna(top_state.get("policy_count")) else "N/A"
         st.success(
-            f"💡 **Insight:** {top_state['state']} recorded the highest insurance value at ₹{top_state['total_amount']:.2f} Cr "
-            f"with {top_state['policy_count']:,} total policies."
+            f"💡 **Insight:** {state_name} recorded the highest insurance value at ₹{top_state['total_amount']:.2f} Cr "
+            f"with {policy_count} total policies."
         )
-
     else:
-        st.error("⚠️ Columns 'state' or 'total_value_in_crores' not found in the dataset. Check CSV format.")
+        st.error("⚠️ Insurance data missing required columns. Please check top_states_insurance.csv")
 
 # ---------------------------------------------------------------
 # 4️⃣ MARKET EXPANSION
