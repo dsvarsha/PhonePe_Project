@@ -15,7 +15,7 @@ def clean_state_df(df):
     """
     Normalize and clean DataFrame with a state column and numeric columns.
     - standardize column names
-    - replace NULL/NaN with 'Total (India)'
+    - remove NULL or total rows
     - rename numeric columns (total_value_in_crores → total_amount)
     """
     df = df.copy()
@@ -31,13 +31,12 @@ def clean_state_df(df):
         .astype(str)
         .str.replace('"', '', regex=False)
         .str.strip()
-        .str.lower()
+        .str.title()
     )
 
-    # Replace null/empty with "Total (India)"
-    df[state_col] = df[state_col].replace(
-        {"": "total (india)", "null": "total (india)", "none": "total (india)", "nan": "total (india)"}
-    )
+    # Drop null or total rows
+    df = df[~df[state_col].str.lower().isin(["null", "none", "nan", "total", "total (india)"])]
+    df = df[df[state_col] != ""]
 
     # Rename to 'state'
     if state_col != "state":
@@ -63,6 +62,7 @@ def clean_state_df(df):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
+    df.dropna(subset=["state"], inplace=True)
     return df
 
 # ---------------------------------------------------------------
@@ -120,16 +120,15 @@ if menu == "🏠 Dashboard Overview":
     st.title("📊 PhonePe Business Analytics Dashboard")
     st.markdown("""
     Welcome to the **PhonePe Business Analytics Dashboard** —  
-    an interactive data-driven platform to explore insights from PhonePe’s Pulse dataset.
+    an interactive platform visualizing key insights from the PhonePe Pulse dataset.
 
-    **Project Highlights:**
-    - Automated ETL Pipeline (Python + MySQL)
-    - Clean Data Transformation & Visualization
-    - Real-time Analysis via Streamlit & Plotly
-    - Business Case Studies (Transactions, Devices, Insurance, Expansion, Engagement)
+    **Key Features:**
+    - ETL Process: JSON → MySQL → CSV → Streamlit
+    - Analysis on Transactions, Users, and Insurance
+    - Business insights and case studies integrated
     """)
     st.image("https://upload.wikimedia.org/wikipedia/commons/f/f2/PhonePe_Logo.png", width=250)
-    st.success("💡 Use the sidebar to explore various sections of the project.")
+    st.success("💡 Use the sidebar to explore different analytical sections.")
 
 # ---------------------------------------------------------------
 # 1️⃣ TRANSACTION DYNAMICS
@@ -140,7 +139,6 @@ elif menu == "1️⃣ Transaction Dynamics":
     df_state = data["txn_state"].copy()
     df_cat = data["txn_category"].copy()
 
-    # Bar chart for Top States
     fig1 = px.bar(
         df_state.sort_values("total_amount", ascending=False).head(10),
         x="state",
@@ -151,7 +149,7 @@ elif menu == "1️⃣ Transaction Dynamics":
     )
     st.plotly_chart(fig1, use_container_width=True)
 
-    # Detect category and value column
+    # Detect category/value columns
     cat_cols = [c.lower() for c in df_cat.columns]
     name_col = next((c for c in ["category", "name", "payment_category"] if c in cat_cols), df_cat.columns[0])
     value_col = next((c for c in ["total_amount", "total_value_in_crores", "total_value", "total_in_crores"] if c in cat_cols), None)
@@ -160,11 +158,9 @@ elif menu == "1️⃣ Transaction Dynamics":
         fig2 = px.pie(df_cat, values=value_col, names=name_col, title="Transaction Split by Category")
         st.plotly_chart(fig2, use_container_width=True)
 
-    # Insights
     top_state = df_state.loc[df_state["total_amount"].idxmax()]
     st.success(
-        f"💡 **Insight:** {top_state['state'].title()} leads with ₹{top_state['total_amount']:.2f} Cr in transactions. "
-        f"The overall India total is ₹{df_state['total_amount'].sum():.2f} Cr."
+        f"💡 **Insight:** {top_state['state']} recorded the highest transaction value — ₹{top_state['total_amount']:.2f} Cr."
     )
 
 # ---------------------------------------------------------------
@@ -174,9 +170,7 @@ elif menu == "2️⃣ Device Dominance":
     st.title("📱 Device Dominance and User Engagement")
 
     df_user = data["user_device"].copy()
-    if "registered_users" not in df_user.columns:
-        st.error("⚠️ No valid user data found.")
-    else:
+    if "registered_users" in df_user.columns:
         fig = px.bar(
             df_user.sort_values("registered_users", ascending=False).head(10),
             x="state",
@@ -189,8 +183,10 @@ elif menu == "2️⃣ Device Dominance":
 
         top_state = df_user.loc[df_user["registered_users"].idxmax()]
         st.info(
-            f"📊 **Insight:** {top_state['state'].title()} has the highest PhonePe user registrations — {int(top_state['registered_users']):,} users."
+            f"📊 **Insight:** {top_state['state']} has the highest number of registered users — {int(top_state['registered_users']):,}."
         )
+    else:
+        st.warning("⚠️ Registered user data not found.")
 
 # ---------------------------------------------------------------
 # 3️⃣ INSURANCE PENETRATION
@@ -213,7 +209,7 @@ elif menu == "3️⃣ Insurance Penetration":
 
     top_state = df_ins.loc[df_ins["total_amount"].idxmax()]
     st.success(
-        f"💡 **Insight:** {top_state['state'].title()} leads insurance penetration with ₹{top_state['total_amount']:.2f} Cr "
+        f"💡 **Insight:** {top_state['state']} leads insurance penetration with ₹{top_state['total_amount']:.2f} Cr "
         f"across {int(top_state['policy_count']):,} total policies."
     )
 
@@ -238,7 +234,7 @@ elif menu == "4️⃣ Market Expansion":
 
     top_district = df_dist.loc[df_dist[y_col].idxmax()]
     st.warning(
-        f"🚀 **Insight:** {top_district['district'].title()} shows the strongest market expansion potential."
+        f"🚀 **Insight:** {top_district['district']} shows the strongest market expansion potential."
     )
 
 # ---------------------------------------------------------------
@@ -261,11 +257,10 @@ elif menu == "5️⃣ User Engagement":
 
         top_state = df_user.loc[df_user["engagement_ratio"].idxmax()]
         st.info(
-            f"💡 **Insight:** {top_state['state'].title()} has the highest engagement ratio at "
-            f"{top_state['engagement_ratio']:.2f}%."
+            f"💡 **Insight:** {top_state['state']} shows the highest engagement ratio — {top_state['engagement_ratio']:.2f}%."
         )
     else:
-        st.error("⚠️ Missing columns: required 'registered_users' and 'app_opens' for engagement ratio.")
+        st.error("⚠️ Missing 'registered_users' or 'app_opens' column in user data.")
 
 # ---------------------------------------------------------------
 # 🧠 INSIGHTS SUMMARY
@@ -276,40 +271,35 @@ elif menu == "🧠 Insights Summary":
 
     st.subheader("📈 Transaction Dynamics")
     st.markdown("""
-    - **Total (India)** recorded the highest overall transaction volume.  
-    - Karnataka and Maharashtra follow closely in state-level performance.  
-    - Utility-based payments like **Recharge & Bill Payments** dominate.
+    - Karnataka and Maharashtra lead in transaction value.  
+    - Utility payments dominate digital transactions.
     """)
 
     st.subheader("📱 Device Dominance")
     st.markdown("""
-    - Highest user registrations seen in **Maharashtra**, **Uttar Pradesh**, and **Karnataka**.  
-    - Majority users access PhonePe on **Android devices** (Xiaomi, Samsung).  
-    - Optimizing app UI for Android ensures wider reach.
+    - Maharashtra and Uttar Pradesh have the most registered users.  
+    - Majority of users are on Android devices.
     """)
 
     st.subheader("🧾 Insurance Penetration")
     st.markdown("""
-    - Southern states like **Tamil Nadu**, **Karnataka**, and **Andhra Pradesh** dominate insurance adoption.  
-    - Indicates higher financial awareness and secure digital payment behavior.  
-    - Opportunity to expand in Northern and Eastern regions.
+    - Tamil Nadu and Karnataka show highest insurance adoption.  
+    - Indicates strong digital finance trust.
     """)
 
     st.subheader("🌍 Market Expansion")
     st.markdown("""
-    - Tier-2 and Tier-3 cities show fast growth, led by **Bihar** and **Madhya Pradesh**.  
-    - Expanding merchant and local partnerships can accelerate penetration.
+    - Tier-2 and Tier-3 districts show growth potential.  
+    - Market expansion beyond metros increasing.
     """)
 
     st.subheader("👥 User Engagement")
     st.markdown("""
-    - Engagement ratios are highest in high-tech urban regions.  
-    - Daily app opens increasing year over year — reflecting user trust.  
-    - Reward and cashback programs can enhance retention.
+    - Strong engagement in urban states like Karnataka and Maharashtra.  
+    - Consistent app opens reflect user loyalty.
     """)
 
-    st.markdown("---")
-    st.success("💬 Summary: The dashboard provides a holistic view of PhonePe’s transaction ecosystem, from usage trends to regional opportunities and growth potential.")
+    st.success("💬 Summary: The dashboard reveals regional strengths, device trends, and engagement opportunities for PhonePe’s market growth.")
 
 # ---------------------------------------------------------------
 # FOOTER
