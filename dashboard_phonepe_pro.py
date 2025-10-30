@@ -93,6 +93,31 @@ def load_csvs():
 
 data = load_csvs()
 
+# ---------- GLOBAL CLEANING FIX ----------
+for key, df in data.items():
+    # Make a copy to avoid modifying cache
+    df = df.copy()
+    df.columns = df.columns.str.strip().str.lower()
+
+    # Clean common text columns (state, district, etc.)
+    if "state" in df.columns:
+        df["state"] = df["state"].astype(str).str.replace('"', '', regex=False).str.strip()
+        df = df[df["state"].str.lower() != "null"]
+
+    if "district" in df.columns:
+        df["district"] = df["district"].astype(str).str.replace('"', '', regex=False).str.strip()
+        df = df[df["district"].str.lower() != "null"]
+
+    # Clean numeric columns (convert and drop NaNs)
+    for col in df.columns:
+        if any(word in col for word in ["value", "amount", "count", "registered", "total"]):
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    df = df.dropna()
+
+    data[key] = df  # update cleaned version back
+# -----------------------------------------
+
+
 # ---------------------- CLEAN COLUMN NAMES ----------------------
 for key, df in data.items():
     df.columns = df.columns.str.strip().str.lower()
@@ -183,10 +208,16 @@ elif menu == "2️⃣ Device Dominance":
                  title="Registered Users by State", text_auto=".2s")
     st.plotly_chart(fig, use_container_width=True)
 
+    if not df_user.empty and y_col in df_user.columns:
     top_state = df_user.loc[df_user[y_col].idxmax()]
+    state_name = top_state.get(x_col, "Unknown")
+    user_count = top_state.get(y_col, 0)
     st.info(
-        f"📊 **Insight:** {top_state[x_col]} has the highest number of PhonePe users — {int(top_state[y_col]):,} total users."
+        f"📊 **Insight:** {state_name} has the highest number of PhonePe users — {int(user_count):,} total users."
     )
+else:
+    st.warning("No valid user data available after cleaning.")
+
 
 # ---------------------------------------------------------------
 # 3️⃣ INSURANCE PENETRATION
@@ -213,15 +244,18 @@ elif menu == "3️⃣ Insurance Penetration":
 
         # safe top-state extraction
         top_idx = df_ins["total_amount"].idxmax()
-        top_state = df_ins.loc[top_idx]
-        state_name = top_state.get("state", "Unknown")
-        policy_count = int(top_state["policy_count"]) if "policy_count" in df_ins.columns and not pd.isna(top_state.get("policy_count")) else "N/A"
-        st.success(
-            f"💡 **Insight:** {state_name} recorded the highest insurance value at ₹{top_state['total_amount']:.2f} Cr "
-            f"with {policy_count} total policies."
-        )
-    else:
-        st.error("⚠️ Insurance data missing required columns. Please check top_states_insurance.csv")
+    if not df_ins.empty:
+    top_state = df_ins.loc[df_ins["total_amount"].idxmax()]
+    state_name = top_state.get("state", "Unknown")
+    amount_val = top_state.get("total_amount", 0)
+    policy_val = top_state.get("policy_count", "N/A")
+    st.success(
+        f"💡 **Insight:** {state_name} recorded the highest insurance value at ₹{amount_val:.2f} Cr "
+        f"with {policy_val} total policies."
+    )
+else:
+    st.warning("No valid insurance data available after cleaning.")
+
 
 # ---------------------------------------------------------------
 # 4️⃣ MARKET EXPANSION
