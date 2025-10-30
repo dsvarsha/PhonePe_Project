@@ -8,77 +8,77 @@ import pandas as pd
 import plotly.express as px
 from pathlib import Path
 
-# ---------- Data cleaning helper ----------
+# ---------------------------------------------------------------
+# 🧹 UNIVERSAL CLEANING FUNCTION
+# ---------------------------------------------------------------
 def clean_state_df(df):
     """
     Normalize and clean DataFrame with a state column and numeric columns.
-    - lowercase column names
-    - find and standardize state column to 'state'
-    - strip quotes/spaces, convert 'NULL' to NaN and drop NULL states
-    - standardize numeric column names and convert to numeric types
+    - standardize column names
+    - replace NULL/NaN with 'Total (India)'
+    - rename numeric columns (total_value_in_crores → total_amount)
     """
     df = df.copy()
     df.columns = df.columns.str.strip().str.lower()
 
-    # identify state column (common candidates)
+    # Identify state column
     state_candidates = ["state", "entityname", "state name", "statename"]
-    state_col = None
-    for c in state_candidates:
-        if c in df.columns:
-            state_col = c
-            break
-    if state_col is None:
-        state_col = df.columns[0]   # fallback to first column
+    state_col = next((c for c in state_candidates if c in df.columns), df.columns[0])
 
-    # normalize state text
-    df[state_col] = df[state_col].astype(str).str.replace('"', '', regex=False).str.strip()
-    df[state_col] = df[state_col].replace({"": pd.NA, "null": pd.NA, "none": pd.NA})
+    # Normalize text
+    df[state_col] = (
+        df[state_col]
+        .astype(str)
+        .str.replace('"', '', regex=False)
+        .str.strip()
+        .str.lower()
+    )
 
-    # rename to 'state'
+    # Replace null/empty with "Total (India)"
+    df[state_col] = df[state_col].replace(
+        {"": "total (india)", "null": "total (india)", "none": "total (india)", "nan": "total (india)"}
+    )
+
+    # Rename to 'state'
     if state_col != "state":
         df.rename(columns={state_col: "state"}, inplace=True)
 
-    # common renames for numeric/value cols
+    # Rename numeric columns
     rename_map = {
         "total_value_in_crores": "total_amount",
         "total_in_crores": "total_amount",
         "total_value": "total_amount",
         "total_policies": "policy_count",
         "total_count": "count",
-        "totalcount": "count",
         "registered_users_": "registered_users",
-        "registereduser": "registered_users"
+        "total_registered_users": "registered_users",
+        "registereduser": "registered_users",
+        "appopens": "app_opens",
+        "total_app_opens": "app_opens"
     }
-    for k, v in rename_map.items():
-        if k in df.columns and v not in df.columns:
-            df.rename(columns={k: v}, inplace=True)
+    df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns}, inplace=True)
 
-    # convert numeric cols to numeric dtype (coerce bad values to NaN)
-    for col in ["total_amount", "policy_count", "count", "registered_users"]:
+    # Convert numerics
+    for col in ["total_amount", "policy_count", "count", "registered_users", "app_opens"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # drop rows where state is missing
-    df = df.dropna(subset=["state"])
-
-    # If total_amount exists, drop rows missing it (we can't compute top without value)
-    if "total_amount" in df.columns:
-        df = df.dropna(subset=["total_amount"])
-
     return df
-# ---------- end helper ----------
 
-
-# ---------------------- PAGE CONFIG ----------------------------
+# ---------------------------------------------------------------
+# ⚙️ PAGE CONFIG
+# ---------------------------------------------------------------
 st.set_page_config(page_title="PhonePe Business Analytics Dashboard", layout="wide")
 
-# ---------------------- SIDEBAR HEADER --------------------------
+# Sidebar header
 st.sidebar.title("📊 PhonePe Business Analytics | 2025")
 st.sidebar.markdown("**Developed by:** Varsha Sureshkumar 💜")
 st.sidebar.markdown("B.E Electronics & Communication | KGiSL Institute of Technology")
 st.sidebar.markdown("---")
 
-# ---------------------- DATA LOADING ----------------------------
+# ---------------------------------------------------------------
+# 📁 LOAD DATASETS
+# ---------------------------------------------------------------
 DATA_DIR = Path(__file__).parent / "analysis_results"
 
 @st.cache_data
@@ -93,13 +93,13 @@ def load_csvs():
 
 data = load_csvs()
 
-# ---------- GLOBAL CLEANING FIX ----------
+# Clean all datasets
 for key, df in data.items():
-    df = clean_state_df(df)
-    data[key] = df
-# -----------------------------------------
+    data[key] = clean_state_df(df)
 
-# ---------------------- SIDEBAR MENU ----------------------------
+# ---------------------------------------------------------------
+# 📋 SIDEBAR MENU
+# ---------------------------------------------------------------
 menu = st.sidebar.radio(
     "📁 Select Section",
     [
@@ -114,27 +114,22 @@ menu = st.sidebar.radio(
 )
 
 # ---------------------------------------------------------------
-# 🏠 HOME PAGE
+# 🏠 OVERVIEW
 # ---------------------------------------------------------------
 if menu == "🏠 Dashboard Overview":
     st.title("📊 PhonePe Business Analytics Dashboard")
     st.markdown("""
-    This dashboard presents an in-depth **data analysis of PhonePe Pulse transactions** across India.  
-    It demonstrates a complete data pipeline — from JSON extraction to MySQL integration,  
-    CSV generation, and final interactive visualization using **Streamlit** & **Plotly**.
+    Welcome to the **PhonePe Business Analytics Dashboard** —  
+    an interactive data-driven platform to explore insights from PhonePe’s Pulse dataset.
 
-    **Key Focus Areas:**
-    - Transaction Trends & Payment Categories  
-    - Device-Based User Insights  
-    - Insurance Growth Analysis  
-    - Regional Market Expansion  
-    - User Engagement Ratios  
-
-    Use the left sidebar to explore each section.
+    **Project Highlights:**
+    - Automated ETL Pipeline (Python + MySQL)
+    - Clean Data Transformation & Visualization
+    - Real-time Analysis via Streamlit & Plotly
+    - Business Case Studies (Transactions, Devices, Insurance, Expansion, Engagement)
     """)
-
     st.image("https://upload.wikimedia.org/wikipedia/commons/f/f2/PhonePe_Logo.png", width=250)
-    st.success("💡 Tip: Click on any section in the sidebar to view detailed visualizations and insights.")
+    st.success("💡 Use the sidebar to explore various sections of the project.")
 
 # ---------------------------------------------------------------
 # 1️⃣ TRANSACTION DYNAMICS
@@ -142,24 +137,35 @@ if menu == "🏠 Dashboard Overview":
 elif menu == "1️⃣ Transaction Dynamics":
     st.title("📈 Transaction Dynamics Across States")
 
-    df_state = data["txn_state"]
-    df_cat = data["txn_category"]
+    df_state = data["txn_state"].copy()
+    df_cat = data["txn_category"].copy()
 
-    fig1 = px.bar(df_state, x="state", y="total_amount", color="total_amount",
-                  title="Top 10 States by Transaction Value (₹ in Crores)", text_auto=".2s")
+    # Bar chart for Top States
+    fig1 = px.bar(
+        df_state.sort_values("total_amount", ascending=False).head(10),
+        x="state",
+        y="total_amount",
+        color="total_amount",
+        title="Top 10 States by Transaction Value (₹ in Crores)",
+        text_auto=".2s"
+    )
     st.plotly_chart(fig1, use_container_width=True)
 
-    fig2 = px.pie(df_cat, values="total_amount", names="category",
-                  title="Transaction Split by Category")
-    st.plotly_chart(fig2, use_container_width=True)
+    # Detect category and value column
+    cat_cols = [c.lower() for c in df_cat.columns]
+    name_col = next((c for c in ["category", "name", "payment_category"] if c in cat_cols), df_cat.columns[0])
+    value_col = next((c for c in ["total_amount", "total_value_in_crores", "total_value", "total_in_crores"] if c in cat_cols), None)
 
-    if not df_state.empty:
-        top_state = df_state.loc[df_state["total_amount"].idxmax()]
-        top_cat = df_cat.loc[df_cat["total_amount"].idxmax()]
-        st.success(
-            f"💡 **Insight:** {top_state['state']} leads all states with ₹{top_state['total_amount']:.2f} Cr in transactions. "
-            f"The most used category is **{top_cat['category']}**."
-        )
+    if value_col:
+        fig2 = px.pie(df_cat, values=value_col, names=name_col, title="Transaction Split by Category")
+        st.plotly_chart(fig2, use_container_width=True)
+
+    # Insights
+    top_state = df_state.loc[df_state["total_amount"].idxmax()]
+    st.success(
+        f"💡 **Insight:** {top_state['state'].title()} leads with ₹{top_state['total_amount']:.2f} Cr in transactions. "
+        f"The overall India total is ₹{df_state['total_amount'].sum():.2f} Cr."
+    )
 
 # ---------------------------------------------------------------
 # 2️⃣ DEVICE DOMINANCE
@@ -167,64 +173,23 @@ elif menu == "1️⃣ Transaction Dynamics":
 elif menu == "2️⃣ Device Dominance":
     st.title("📱 Device Dominance and User Engagement")
 
-    # Load & clean user dataset
     df_user = data["user_device"].copy()
-    df_user.columns = df_user.columns.str.strip().str.lower()
-
-    # Auto rename columns to consistent format
-    rename_map = {
-        "total_registered_users": "registered_users",
-        "total_app_opens": "app_opens",
-        "registereduser": "registered_users",
-        "appopens": "app_opens"
-    }
-    df_user.rename(columns=rename_map, inplace=True)
-
-    # Clean up state column
-    if "state" in df_user.columns:
-        df_user["state"] = (
-            df_user["state"]
-            .astype(str)
-            .str.replace('"', '', regex=False)
-            .str.strip()
-        )
-        df_user = df_user[df_user["state"].str.lower() != "null"]
+    if "registered_users" not in df_user.columns:
+        st.error("⚠️ No valid user data found.")
     else:
-        st.error("⚠️ No 'state' column found in user data.")
-        st.stop()
+        fig = px.bar(
+            df_user.sort_values("registered_users", ascending=False).head(10),
+            x="state",
+            y="registered_users",
+            color="registered_users",
+            title="Top 10 States by Registered Users",
+            text_auto=".2s"
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
-    # Convert numeric columns
-    for col in ["registered_users", "app_opens"]:
-        if col in df_user.columns:
-            df_user[col] = pd.to_numeric(df_user[col], errors="coerce")
-    df_user.dropna(subset=["registered_users"], inplace=True)
-
-    # Sort by users and plot
-    df_plot = df_user.sort_values("registered_users", ascending=False).head(10)
-    fig = px.bar(
-        df_plot,
-        x="state",
-        y="registered_users",
-        color="registered_users",
-        title="Top 10 States by Registered Users",
-        text_auto=".2s"
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-    # 📊 Insight 1 — Top state by registered users
-    if not df_user.empty:
         top_state = df_user.loc[df_user["registered_users"].idxmax()]
         st.info(
-            f"📊 **Insight:** {top_state['state']} has the highest number of PhonePe registered users — "
-            f"{int(top_state['registered_users']):,} total users."
-        )
-
-    # 📈 Insight 2 — Top state by app opens
-    if "app_opens" in df_user.columns and not df_user["app_opens"].isna().all():
-        top_open_state = df_user.loc[df_user["app_opens"].idxmax()]
-        st.success(
-            f"📱 **Insight:** {top_open_state['state']} users opened the PhonePe app the most — "
-            f"{int(top_open_state['app_opens']):,} total app opens."
+            f"📊 **Insight:** {top_state['state'].title()} has the highest PhonePe user registrations — {int(top_state['registered_users']):,} users."
         )
 
 # ---------------------------------------------------------------
@@ -234,31 +199,23 @@ elif menu == "3️⃣ Insurance Penetration":
     st.title("🧾 Insurance Penetration Across States")
 
     df_ins = data["insurance_state"].copy()
-    df_ins = clean_state_df(df_ins)
+    df_ins = df_ins.sort_values("total_amount", ascending=False)
 
-    if "state" in df_ins.columns and "total_amount" in df_ins.columns:
-        df_plot = df_ins.sort_values("total_amount", ascending=False).head(10)
-        fig = px.bar(
-            df_plot,
-            x="state",
-            y="total_amount",
-            color="total_amount",
-            title="Top 10 States by Insurance Premium Value (₹ in Crores)",
-            text_auto=".2s"
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    fig = px.bar(
+        df_ins.head(10),
+        x="state",
+        y="total_amount",
+        color="total_amount",
+        title="Top 10 States by Insurance Premium Value (₹ in Crores)",
+        text_auto=".2s"
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
-        if not df_ins.empty:
-            top_state = df_ins.loc[df_ins["total_amount"].idxmax()]
-            state_name = top_state.get("state", "Unknown")
-            amount_val = top_state.get("total_amount", 0)
-            policy_val = top_state.get("policy_count", "N/A")
-            st.success(
-                f"💡 **Insight:** {state_name} recorded the highest insurance value at ₹{amount_val:.2f} Cr "
-                f"with {policy_val} total policies."
-            )
-    else:
-        st.warning("No valid insurance data available after cleaning.")
+    top_state = df_ins.loc[df_ins["total_amount"].idxmax()]
+    st.success(
+        f"💡 **Insight:** {top_state['state'].title()} leads insurance penetration with ₹{top_state['total_amount']:.2f} Cr "
+        f"across {int(top_state['policy_count']):,} total policies."
+    )
 
 # ---------------------------------------------------------------
 # 4️⃣ MARKET EXPANSION
@@ -266,22 +223,24 @@ elif menu == "3️⃣ Insurance Penetration":
 elif menu == "4️⃣ Market Expansion":
     st.title("🌍 Market Expansion and Growth Trends")
 
-    df_dist = data["district_txn"]
+    df_dist = data["district_txn"].copy()
     y_col = "total_amount" if "total_amount" in df_dist.columns else "count"
 
-    fig = px.bar(df_dist, x="district", y=y_col, color=y_col,
-                 title="Top 10 Districts by Transaction Value (₹ in Crores)", text_auto=".2s")
+    fig = px.bar(
+        df_dist.sort_values(y_col, ascending=False).head(10),
+        x="district",
+        y=y_col,
+        color=y_col,
+        title="Top 10 Districts by Transaction Value (₹ in Crores)",
+        text_auto=".2s"
+    )
     st.plotly_chart(fig, use_container_width=True)
 
-    if not df_dist.empty:
-        top_district = df_dist.loc[df_dist[y_col].idxmax()]
-        st.warning(
-            f"🚀 **Insight:** {top_district['district']} is the top-performing district, showing strong market expansion potential."
-        )
+    top_district = df_dist.loc[df_dist[y_col].idxmax()]
+    st.warning(
+        f"🚀 **Insight:** {top_district['district'].title()} shows the strongest market expansion potential."
+    )
 
-# ---------------------------------------------------------------
-# 5️⃣ USER ENGAGEMENT
-# ---------------------------------------------------------------
 # ---------------------------------------------------------------
 # 5️⃣ USER ENGAGEMENT
 # ---------------------------------------------------------------
@@ -289,40 +248,8 @@ elif menu == "5️⃣ User Engagement":
     st.title("👥 User Engagement and Growth Strategy")
 
     df_user = data["user_device"].copy()
-    df_user.columns = df_user.columns.str.strip().str.lower()
-
-    # Rename columns to consistent format
-    rename_map = {
-        "total_registered_users": "registered_users",
-        "total_app_opens": "app_opens",
-        "registereduser": "registered_users",
-        "appopens": "app_opens"
-    }
-    df_user.rename(columns=rename_map, inplace=True)
-
-    # Clean state column
-    if "state" in df_user.columns:
-        df_user["state"] = (
-            df_user["state"]
-            .astype(str)
-            .str.replace('"', '', regex=False)
-            .str.strip()
-        )
-        df_user = df_user[df_user["state"].str.lower() != "null"]
-
-    # Convert numeric columns safely
-    for col in ["registered_users", "app_opens"]:
-        if col in df_user.columns:
-            df_user[col] = pd.to_numeric(df_user[col], errors="coerce")
-
-    # Drop missing rows
-    df_user.dropna(subset=["registered_users"], inplace=True)
-
-    # Engagement ratio = (app_opens / registered_users) * 100
     if "registered_users" in df_user.columns and "app_opens" in df_user.columns:
         df_user["engagement_ratio"] = (df_user["app_opens"] / df_user["registered_users"]) * 100
-
-        # Plot line chart for engagement ratio
         fig = px.line(
             df_user.sort_values("engagement_ratio", ascending=False),
             x="state",
@@ -332,18 +259,16 @@ elif menu == "5️⃣ User Engagement":
         )
         st.plotly_chart(fig, use_container_width=True)
 
-        # Find top state
         top_state = df_user.loc[df_user["engagement_ratio"].idxmax()]
         st.info(
-            f"💡 **Insight:** {top_state['state']} has the highest engagement ratio — "
-            f"{top_state['engagement_ratio']:.2f}%, indicating highly active users."
+            f"💡 **Insight:** {top_state['state'].title()} has the highest engagement ratio at "
+            f"{top_state['engagement_ratio']:.2f}%."
         )
     else:
-        st.error("⚠️ Required columns not found: expected both 'registered_users' and 'app_opens'.")
-
+        st.error("⚠️ Missing columns: required 'registered_users' and 'app_opens' for engagement ratio.")
 
 # ---------------------------------------------------------------
-# 🧠 INSIGHTS SUMMARY PAGE
+# 🧠 INSIGHTS SUMMARY
 # ---------------------------------------------------------------
 elif menu == "🧠 Insights Summary":
     st.title("🧠 Insights Summary & Business Analysis")
@@ -351,40 +276,40 @@ elif menu == "🧠 Insights Summary":
 
     st.subheader("📈 Transaction Dynamics")
     st.markdown("""
-    - Karnataka, Maharashtra, and Tamil Nadu lead with the highest transaction values.  
-    - **Recharge & Bill Payments** and **Peer-to-Peer Transfers** dominate usage.  
-    - Suggests strong adoption in utility-based digital payments.
+    - **Total (India)** recorded the highest overall transaction volume.  
+    - Karnataka and Maharashtra follow closely in state-level performance.  
+    - Utility-based payments like **Recharge & Bill Payments** dominate.
     """)
 
     st.subheader("📱 Device Dominance")
     st.markdown("""
-    - Most active users access PhonePe on **Xiaomi** and **Samsung** devices.  
-    - Majority of user base is Android, mid-range device segment.  
-    - UI optimization for Android devices can enhance engagement.
+    - Highest user registrations seen in **Maharashtra**, **Uttar Pradesh**, and **Karnataka**.  
+    - Majority users access PhonePe on **Android devices** (Xiaomi, Samsung).  
+    - Optimizing app UI for Android ensures wider reach.
     """)
 
     st.subheader("🧾 Insurance Penetration")
     st.markdown("""
-    - Insurance adoption is strongest in Southern India (Karnataka, Andhra Pradesh, Tamil Nadu).  
-    - Indicates higher financial awareness and product acceptance.  
-    - Expansion opportunity in Northern & Eastern states.
+    - Southern states like **Tamil Nadu**, **Karnataka**, and **Andhra Pradesh** dominate insurance adoption.  
+    - Indicates higher financial awareness and secure digital payment behavior.  
+    - Opportunity to expand in Northern and Eastern regions.
     """)
 
     st.subheader("🌍 Market Expansion")
     st.markdown("""
-    - Rapid growth seen in Tier-2 & Tier-3 cities like Bihar and Madhya Pradesh.  
-    - Non-metro adoption shows potential for merchant onboarding programs.
+    - Tier-2 and Tier-3 cities show fast growth, led by **Bihar** and **Madhya Pradesh**.  
+    - Expanding merchant and local partnerships can accelerate penetration.
     """)
 
     st.subheader("👥 User Engagement")
     st.markdown("""
-    - Metro states show high engagement, while Tier-2 states are catching up quickly.  
-    - Growth in daily app opens reflects increasing trust and retention.  
-    - Introduce reward programs for consistent daily usage.
+    - Engagement ratios are highest in high-tech urban regions.  
+    - Daily app opens increasing year over year — reflecting user trust.  
+    - Reward and cashback programs can enhance retention.
     """)
 
     st.markdown("---")
-    st.success("💬 These insights highlight regional opportunities, device-specific optimizations, and engagement strategies for expanding PhonePe’s market presence.")
+    st.success("💬 Summary: The dashboard provides a holistic view of PhonePe’s transaction ecosystem, from usage trends to regional opportunities and growth potential.")
 
 # ---------------------------------------------------------------
 # FOOTER
