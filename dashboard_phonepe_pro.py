@@ -133,17 +133,41 @@ elif menu == "2️⃣ Device Dominance":
 elif menu == "3️⃣ Insurance Penetration":
     st.title("🧾 Insurance Penetration Across States")
 
-    df_ins = data["insurance_state"]
-    y_col = "total_amount" if "total_amount" in df_ins.columns else "count"
+    # Copy the insurance data
+    df_ins = data["insurance_state"].copy()
 
-    fig = px.bar(df_ins, x="state", y=y_col, color=y_col,
-                 title="Top States by Insurance Premium Value (₹ in Crores)", text_auto=".2s")
-    st.plotly_chart(fig, use_container_width=True)
+    # Normalize column names (remove extra spaces, lowercase)
+    df_ins.columns = df_ins.columns.str.strip().str.lower()
 
-    top_state = df_ins.loc[df_ins[y_col].idxmax()]
-    st.success(
-        f"💡 **Insight:** {top_state['state']} leads in insurance premium value with ₹{top_state[y_col]:.2f} Cr."
-    )
+    # Rename columns to standardized names
+    rename_map = {
+        "total_value_in_crores": "total_amount",
+        "total_policies": "policy_count",
+    }
+    df_ins.rename(columns=rename_map, inplace=True)
+
+    # Confirm which columns exist
+    if "state" in df_ins.columns and "total_amount" in df_ins.columns:
+        # Plot Top 10 states by value
+        fig = px.bar(
+            df_ins.sort_values("total_amount", ascending=False).head(10),
+            x="state",
+            y="total_amount",
+            color="total_amount",
+            title="Top 10 States by Insurance Premium Value (₹ in Crores)",
+            text_auto=".2s",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Insight card
+        top_state = df_ins.loc[df_ins["total_amount"].idxmax()]
+        st.success(
+            f"💡 **Insight:** {top_state['state']} recorded the highest insurance value at ₹{top_state['total_amount']:.2f} Cr "
+            f"with {top_state['policy_count']:,} total policies."
+        )
+
+    else:
+        st.error("⚠️ Columns 'state' or 'total_value_in_crores' not found in the dataset. Check CSV format.")
 
 # ---------------------------------------------------------------
 # 4️⃣ MARKET EXPANSION
