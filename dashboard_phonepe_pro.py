@@ -167,23 +167,65 @@ elif menu == "1️⃣ Transaction Dynamics":
 elif menu == "2️⃣ Device Dominance":
     st.title("📱 Device Dominance and User Engagement")
 
-    df_user = data["user_device"]
-    x_col = "state" if "state" in df_user.columns else df_user.columns[0]
-    y_col = "registered_users" if "registered_users" in df_user.columns else "count"
+    # Load & clean user dataset
+    df_user = data["user_device"].copy()
+    df_user.columns = df_user.columns.str.strip().str.lower()
 
-    fig = px.bar(df_user, x=x_col, y=y_col, color=y_col,
-                 title="Registered Users by State", text_auto=".2s")
+    # Auto rename columns to consistent format
+    rename_map = {
+        "total_registered_users": "registered_users",
+        "total_app_opens": "app_opens",
+        "registereduser": "registered_users",
+        "appopens": "app_opens"
+    }
+    df_user.rename(columns=rename_map, inplace=True)
+
+    # Clean up state column
+    if "state" in df_user.columns:
+        df_user["state"] = (
+            df_user["state"]
+            .astype(str)
+            .str.replace('"', '', regex=False)
+            .str.strip()
+        )
+        df_user = df_user[df_user["state"].str.lower() != "null"]
+    else:
+        st.error("⚠️ No 'state' column found in user data.")
+        st.stop()
+
+    # Convert numeric columns
+    for col in ["registered_users", "app_opens"]:
+        if col in df_user.columns:
+            df_user[col] = pd.to_numeric(df_user[col], errors="coerce")
+    df_user.dropna(subset=["registered_users"], inplace=True)
+
+    # Sort by users and plot
+    df_plot = df_user.sort_values("registered_users", ascending=False).head(10)
+    fig = px.bar(
+        df_plot,
+        x="state",
+        y="registered_users",
+        color="registered_users",
+        title="Top 10 States by Registered Users",
+        text_auto=".2s"
+    )
     st.plotly_chart(fig, use_container_width=True)
 
-    if not df_user.empty and y_col in df_user.columns:
-        top_state = df_user.loc[df_user[y_col].idxmax()]
-        state_name = top_state.get(x_col, "Unknown")
-        user_count = top_state.get(y_col, 0)
+    # 📊 Insight 1 — Top state by registered users
+    if not df_user.empty:
+        top_state = df_user.loc[df_user["registered_users"].idxmax()]
         st.info(
-            f"📊 **Insight:** {state_name} has the highest number of PhonePe users — {int(user_count):,} total users."
+            f"📊 **Insight:** {top_state['state']} has the highest number of PhonePe registered users — "
+            f"{int(top_state['registered_users']):,} total users."
         )
-    else:
-        st.warning("No valid user data available after cleaning.")
+
+    # 📈 Insight 2 — Top state by app opens
+    if "app_opens" in df_user.columns and not df_user["app_opens"].isna().all():
+        top_open_state = df_user.loc[df_user["app_opens"].idxmax()]
+        st.success(
+            f"📱 **Insight:** {top_open_state['state']} users opened the PhonePe app the most — "
+            f"{int(top_open_state['app_opens']):,} total app opens."
+        )
 
 # ---------------------------------------------------------------
 # 3️⃣ INSURANCE PENETRATION
