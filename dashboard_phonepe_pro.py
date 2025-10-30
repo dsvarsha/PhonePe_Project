@@ -95,43 +95,9 @@ data = load_csvs()
 
 # ---------- GLOBAL CLEANING FIX ----------
 for key, df in data.items():
-    # Make a copy to avoid modifying cache
-    df = df.copy()
-    df.columns = df.columns.str.strip().str.lower()
-
-    # Clean common text columns (state, district, etc.)
-    if "state" in df.columns:
-        df["state"] = df["state"].astype(str).str.replace('"', '', regex=False).str.strip()
-        df = df[df["state"].str.lower() != "null"]
-
-    if "district" in df.columns:
-        df["district"] = df["district"].astype(str).str.replace('"', '', regex=False).str.strip()
-        df = df[df["district"].str.lower() != "null"]
-
-    # Clean numeric columns (convert and drop NaNs)
-    for col in df.columns:
-        if any(word in col for word in ["value", "amount", "count", "registered", "total"]):
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-    df = df.dropna()
-
-    data[key] = df  # update cleaned version back
-# -----------------------------------------
-
-
-# ---------------------- CLEAN COLUMN NAMES ----------------------
-for key, df in data.items():
-    df.columns = df.columns.str.strip().str.lower()
-    rename_map = {
-        "total_in_crores": "total_amount",
-        "total_value": "total_amount",
-        "total_count": "count",
-        "totalcount": "count",
-        "registereduser": "registered_users",
-        "registered_users_": "registered_users",
-        "total_registered_users": "registered_users"
-    }
-    df.rename(columns=rename_map, inplace=True)
+    df = clean_state_df(df)
     data[key] = df
+# -----------------------------------------
 
 # ---------------------- SIDEBAR MENU ----------------------------
 menu = st.sidebar.radio(
@@ -187,12 +153,13 @@ elif menu == "1️⃣ Transaction Dynamics":
                   title="Transaction Split by Category")
     st.plotly_chart(fig2, use_container_width=True)
 
-    top_state = df_state.loc[df_state["total_amount"].idxmax()]
-    top_cat = df_cat.loc[df_cat["total_amount"].idxmax()]
-    st.success(
-        f"💡 **Insight:** {top_state['state']} leads all states with ₹{top_state['total_amount']:.2f} Cr in transactions. "
-        f"The most used category is **{top_cat['category']}**."
-    )
+    if not df_state.empty:
+        top_state = df_state.loc[df_state["total_amount"].idxmax()]
+        top_cat = df_cat.loc[df_cat["total_amount"].idxmax()]
+        st.success(
+            f"💡 **Insight:** {top_state['state']} leads all states with ₹{top_state['total_amount']:.2f} Cr in transactions. "
+            f"The most used category is **{top_cat['category']}**."
+        )
 
 # ---------------------------------------------------------------
 # 2️⃣ DEVICE DOMINANCE
@@ -209,15 +176,14 @@ elif menu == "2️⃣ Device Dominance":
     st.plotly_chart(fig, use_container_width=True)
 
     if not df_user.empty and y_col in df_user.columns:
-    top_state = df_user.loc[df_user[y_col].idxmax()]
-    state_name = top_state.get(x_col, "Unknown")
-    user_count = top_state.get(y_col, 0)
-    st.info(
-        f"📊 **Insight:** {state_name} has the highest number of PhonePe users — {int(user_count):,} total users."
-    )
-else:
-    st.warning("No valid user data available after cleaning.")
-
+        top_state = df_user.loc[df_user[y_col].idxmax()]
+        state_name = top_state.get(x_col, "Unknown")
+        user_count = top_state.get(y_col, 0)
+        st.info(
+            f"📊 **Insight:** {state_name} has the highest number of PhonePe users — {int(user_count):,} total users."
+        )
+    else:
+        st.warning("No valid user data available after cleaning.")
 
 # ---------------------------------------------------------------
 # 3️⃣ INSURANCE PENETRATION
@@ -225,11 +191,9 @@ else:
 elif menu == "3️⃣ Insurance Penetration":
     st.title("🧾 Insurance Penetration Across States")
 
-    # load and clean
     df_ins = data["insurance_state"].copy()
     df_ins = clean_state_df(df_ins)
 
-    # If cleaned dataframe has the needed columns, plot
     if "state" in df_ins.columns and "total_amount" in df_ins.columns:
         df_plot = df_ins.sort_values("total_amount", ascending=False).head(10)
         fig = px.bar(
@@ -242,20 +206,17 @@ elif menu == "3️⃣ Insurance Penetration":
         )
         st.plotly_chart(fig, use_container_width=True)
 
-        # safe top-state extraction
-        top_idx = df_ins["total_amount"].idxmax()
-    if not df_ins.empty:
-    top_state = df_ins.loc[df_ins["total_amount"].idxmax()]
-    state_name = top_state.get("state", "Unknown")
-    amount_val = top_state.get("total_amount", 0)
-    policy_val = top_state.get("policy_count", "N/A")
-    st.success(
-        f"💡 **Insight:** {state_name} recorded the highest insurance value at ₹{amount_val:.2f} Cr "
-        f"with {policy_val} total policies."
-    )
-else:
-    st.warning("No valid insurance data available after cleaning.")
-
+        if not df_ins.empty:
+            top_state = df_ins.loc[df_ins["total_amount"].idxmax()]
+            state_name = top_state.get("state", "Unknown")
+            amount_val = top_state.get("total_amount", 0)
+            policy_val = top_state.get("policy_count", "N/A")
+            st.success(
+                f"💡 **Insight:** {state_name} recorded the highest insurance value at ₹{amount_val:.2f} Cr "
+                f"with {policy_val} total policies."
+            )
+    else:
+        st.warning("No valid insurance data available after cleaning.")
 
 # ---------------------------------------------------------------
 # 4️⃣ MARKET EXPANSION
@@ -270,10 +231,11 @@ elif menu == "4️⃣ Market Expansion":
                  title="Top 10 Districts by Transaction Value (₹ in Crores)", text_auto=".2s")
     st.plotly_chart(fig, use_container_width=True)
 
-    top_district = df_dist.loc[df_dist[y_col].idxmax()]
-    st.warning(
-        f"🚀 **Insight:** {top_district['district']} is the top-performing district, showing strong market expansion potential."
-    )
+    if not df_dist.empty:
+        top_district = df_dist.loc[df_dist[y_col].idxmax()]
+        st.warning(
+            f"🚀 **Insight:** {top_district['district']} is the top-performing district, showing strong market expansion potential."
+        )
 
 # ---------------------------------------------------------------
 # 5️⃣ USER ENGAGEMENT
@@ -288,11 +250,12 @@ elif menu == "5️⃣ User Engagement":
                       title="User Engagement Ratio by State (%)")
         st.plotly_chart(fig, use_container_width=True)
 
-        top_state = df_user.loc[df_user["engagement_ratio"].idxmax()]
-        st.info(
-            f"💡 **Insight:** {top_state['state']} shows the highest engagement ratio "
-            f"({top_state['engagement_ratio']:.2f}%), indicating highly active users."
-        )
+        if not df_user.empty:
+            top_state = df_user.loc[df_user["engagement_ratio"].idxmax()]
+            st.info(
+                f"💡 **Insight:** {top_state['state']} shows the highest engagement ratio "
+                f"({top_state['engagement_ratio']:.2f}%), indicating highly active users."
+            )
     else:
         st.error("⚠️ Missing 'registered_users' column in user data CSV.")
 
