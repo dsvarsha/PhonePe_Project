@@ -1,111 +1,108 @@
-# dashboard_phonepe_pro.py
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 from pathlib import Path
 
+st.set_page_config(page_title="PhonePe Business Analytics", layout="wide")
+
+st.sidebar.title("📊 PhonePe Business Analytics")
+st.sidebar.markdown("Developed by **Varsha Sureshkumar 💜**")
+st.sidebar.markdown("---")
+
+# Load CSV data
 DATA_DIR = Path(__file__).parent / "analysis_results"
 
-
-# ---------- Page setup ----------
-st.set_page_config(page_title="📱 PhonePe Business Analytics Dashboard", layout="wide")
-st.title("📊 PhonePe Business Analytics — Varsha Sureshkumar")
-
-st.markdown("### Explore transaction, user, and insurance insights across India")
-
-# ---------- Load data ----------
 @st.cache_data
 def load_csvs():
-    data = {"states_txn": pd.read_csv(DATA_DIR / "top_states_transaction.csv"),
-        "by_category": pd.read_csv(DATA_DIR / "transaction_by_category.csv"),
-        "users": pd.read_csv(DATA_DIR / "top_states_users.csv"),
-        "insurance": pd.read_csv(DATA_DIR / "top_states_insurance.csv"),
-        "districts": pd.read_csv(DATA_DIR / "top_districts_transaction.csv")
+    return {
+        "txn_state": pd.read_csv(DATA_DIR / "top_states_transaction.csv"),
+        "txn_category": pd.read_csv(DATA_DIR / "transaction_by_category.csv"),
+        "user_device": pd.read_csv(DATA_DIR / "top_states_users.csv"),
+        "insurance_state": pd.read_csv(DATA_DIR / "top_states_insurance.csv"),
+        "district_txn": pd.read_csv(DATA_DIR / "top_districts_transaction.csv")
     }
-   
-
-    return data
 
 data = load_csvs()
 
-# ---------- Sidebar Filters ----------
-st.sidebar.header("🔎 Filter Options")
+menu = st.sidebar.radio(
+    "📁 Choose Business Case Study",
+    [
+        "1️⃣ Transaction Dynamics",
+        "2️⃣ Device Dominance",
+        "3️⃣ Insurance Penetration",
+        "4️⃣ Market Expansion",
+        "5️⃣ User Engagement"
+    ]
+)
 
-# dynamic options
-state_options = data["states_txn"]["state"].dropna().unique().tolist()
-category_options = data["by_category"]["category"].dropna().unique().tolist()
+# ---- Case 1 ----
+if menu == "1️⃣ Transaction Dynamics":
+    st.title("📈 Transaction Dynamics Across States")
 
-selected_state = st.sidebar.selectbox("Select State", ["All"] + state_options)
-selected_category = st.sidebar.selectbox("Select Transaction Category", ["All"] + category_options)
+    df_state = data["txn_state"]
+    df_cat = data["txn_category"]
 
-# ---------- KPIs ----------
-st.markdown("### 🧭 Key Performance Indicators")
+    fig1 = px.bar(df_state, x="state", y="total_amount",
+                  title="Top 10 States by Transaction Value",
+                  color="total_amount", text_auto='.2s')
+    st.plotly_chart(fig1, use_container_width=True)
 
-total_value = round(data["states_txn"]["total_in_crores"].sum(), 2)
-total_users = int(data["users"]["total_registered_users"].sum())
-total_policies = int(data["insurance"]["total_policies"].sum())
+    fig2 = px.pie(df_cat, values="total_amount", names="category",
+                  title="Transaction Split by Category")
+    st.plotly_chart(fig2, use_container_width=True)
 
-col1, col2, col3 = st.columns(3)
-col1.metric("Total Transaction Value (₹ Cr)", f"{total_value:,}")
-col2.metric("Total Registered Users", f"{total_users:,}")
-col3.metric("Total Insurance Policies", f"{total_policies:,}")
+    top_state = df_state.loc[df_state["total_amount"].idxmax()]
+    top_cat = df_cat.loc[df_cat["total_amount"].idxmax()]
+    st.success(f"💡 **Insight:** {top_state['state']} leads all states with ₹{top_state['total_amount']/1e9:.2f}B worth of transactions. "
+               f"The most popular category overall is **{top_cat['category']}**.")
 
-st.markdown("---")
+# ---- Case 2 ----
+elif menu == "2️⃣ Device Dominance":
+    st.title("📱 Device Dominance and User Engagement")
 
-# ---------- Tabs ----------
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "🏙️ State Transactions", "💸 Categories", "👥 Users", "🛡️ Insurance", "📍 Districts"
-])
-
-# ---------- 1. State Transactions ----------
-with tab1:
-    st.subheader("Top 10 States by Transaction Value (₹ Crores)")
-    df = data["states_txn"]
-    if selected_state != "All":
-        df = df[df["state"] == selected_state]
-    fig = px.bar(df, x="state", y="total_in_crores", text="total_in_crores",
-                 color="state", title="Transaction Value by State")
+    df_user = data["user_device"]
+    fig = px.bar(df_user, x="state", y="registered_users",
+                 color="registered_users", title="Registered Users by State")
     st.plotly_chart(fig, use_container_width=True)
-    st.dataframe(df)
 
-# ---------- 2. Categories ----------
-with tab2:
-    st.subheader("Transaction Value by Category")
-    df = data["by_category"]
-    if selected_category != "All":
-        df = df[df["category"] == selected_category]
-    fig = px.pie(df, names="category", values="total_in_crores",
-                 title="Transaction Share by Category")
+    top_state = df_user.loc[df_user["registered_users"].idxmax()]
+    st.info(f"💡 **Insight:** {top_state['state']} has the highest registered users on PhonePe "
+            f"with {int(top_state['registered_users']):,} total users.")
+
+# ---- Case 3 ----
+elif menu == "3️⃣ Insurance Penetration":
+    st.title("🧾 Insurance Penetration Across States")
+
+    df_ins = data["insurance_state"]
+    fig = px.bar(df_ins, x="state", y="total_amount", color="total_amount",
+                 title="Top 10 States by Insurance Value")
     st.plotly_chart(fig, use_container_width=True)
-    st.dataframe(df)
 
-# ---------- 3. Users ----------
-with tab3:
-    st.subheader("Top States by Registered Users and App Opens")
-    df = data["users"]
-    fig = px.bar(df, x="state", y="total_registered_users", text="total_registered_users",
-                 color="state", title="Registered Users by State")
+    top_state = df_ins.loc[df_ins["total_amount"].idxmax()]
+    st.success(f"💡 **Insight:** {top_state['state']} leads in insurance value with ₹{top_state['total_amount']/1e9:.2f}B worth of policies sold.")
+
+# ---- Case 4 ----
+elif menu == "4️⃣ Market Expansion":
+    st.title("🌍 Market Expansion and Growth Trends")
+
+    df_dist = data["district_txn"]
+    fig = px.bar(df_dist, x="district", y="total_amount", color="total_amount",
+                 title="Top 10 Districts by Transaction Value")
     st.plotly_chart(fig, use_container_width=True)
-    st.dataframe(df)
 
-# ---------- 4. Insurance ----------
-with tab4:
-    st.subheader("Top States by Insurance Transactions")
-    df = data["insurance"]
-    fig = px.bar(df, x="state", y="total_policies", text="total_policies",
-                 color="state", title="Insurance Adoption by State")
+    top_dist = df_dist.loc[df_dist["total_amount"].idxmax()]
+    st.warning(f"💡 **Insight:** {top_dist['district']} is the top district, showing strong market expansion potential.")
+
+# ---- Case 5 ----
+elif menu == "5️⃣ User Engagement":
+    st.title("👥 User Engagement and Growth Strategy")
+
+    df_user = data["user_device"]
+    df_user["engagement_ratio"] = (df_user["registered_users"] / df_user["registered_users"].max()) * 100
+    fig = px.line(df_user, x="state", y="engagement_ratio", markers=True,
+                  title="Engagement Ratio by State")
     st.plotly_chart(fig, use_container_width=True)
-    st.dataframe(df)
 
-# ---------- 5. Districts ----------
-with tab5:
-    st.subheader("Top Districts by Transaction Value (₹ Crores)")
-    df = data["districts"]
-    fig = px.bar(df, x="district", y="total_in_crores", text="total_in_crores",
-                 color="district", title="District Performance in Transactions")
-    st.plotly_chart(fig, use_container_width=True)
-    st.dataframe(df)
-
-st.markdown("---")
-st.caption("Built by Varsha Sureshkumar | ECE | PhonePe Business Analytics Project 2025 ©")
-
+    top_state = df_user.loc[df_user["engagement_ratio"].idxmax()]
+    st.info(f"💡 **Insight:** {top_state['state']} shows the highest engagement ratio, "
+            f"indicating highly active users in this region.")
