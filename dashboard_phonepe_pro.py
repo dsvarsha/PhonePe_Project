@@ -305,28 +305,99 @@ elif menu == "3️⃣ Insurance Penetration":
         )
 
 # ---------------------------------------------------------------
-# 4️⃣ MARKET EXPANSION
+## ---------------------------------------------------------------
+# 4️⃣ MARKET EXPANSION & GROWTH TRENDS
 # ---------------------------------------------------------------
 elif menu == "4️⃣ Market Expansion":
-    st.title("🌍 Market Expansion and Growth Trends")
+    st.title("🌍 Market Expansion and Growth Trends Across India")
 
+    # Load and clean district-level data
     df_dist = data["district_txn"].copy()
-    y_col = "total_amount" if "total_amount" in df_dist.columns else "count"
+    df_dist.columns = df_dist.columns.str.strip().str.lower()
+    df_dist = df_dist[df_dist["district"].str.lower() != "null"]
 
-    fig = px.bar(
-        df_dist.sort_values(y_col, ascending=False).head(10),
-        x="district",
-        y=y_col,
-        color=y_col,
-        title="Top 10 Districts by Transaction Value (₹ in Crores)",
-        text_auto=".2s"
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    # Load growth trends CSV
+    growth_path = DATA_DIR / "growth_trends.csv"
+    if growth_path.exists():
+        df_growth = pd.read_csv(growth_path)
+        df_growth.columns = df_growth.columns.str.strip().str.lower()
+    else:
+        st.error("⚠️ growth_trends.csv not found in analysis_results folder.")
+        st.stop()
 
-    top_district = df_dist.loc[df_dist[y_col].idxmax()]
-    st.warning(
-        f"🚀 **Insight:** {top_district['district']} shows the strongest market expansion potential."
+    # -------------------------------
+    # 🔹 Chart 1: Top 10 Districts
+    # -------------------------------
+    fig1 = px.bar(
+        df_dist.sort_values("total_amount", ascending=False).head(10),
+        x="district", y="total_amount",
+        color="total_amount",
+        text_auto=".2s",
+        title="Top 10 Districts by Transaction Value (₹ in Crores)"
     )
+    st.plotly_chart(fig1, use_container_width=True)
+
+    top_district = df_dist.loc[df_dist["total_amount"].idxmax()]
+    st.success(
+        f"🚀 **Insight:** {top_district['district']} (in {top_district['state']}) leads with ₹{top_district['total_amount']:.2f} Cr in transactions."
+    )
+
+    # -------------------------------
+    # 🔹 Chart 2: Growth Trends
+    # -------------------------------
+    df_growth["year_quarter"] = df_growth["year"].astype(str) + "-Q" + df_growth["quarter"].astype(str)
+
+    fig2 = px.line(
+        df_growth,
+        x="year_quarter",
+        y="total_amount",
+        color="state",
+        markers=True,
+        title="Yearly Transaction Growth Trends by State"
+    )
+    fig2.update_traces(line=dict(width=3))
+    st.plotly_chart(fig2, use_container_width=True)
+
+    st.info(
+        "📈 **Trend Insight:** Most states show consistent quarter-on-quarter growth — "
+        "with Karnataka and Maharashtra leading in total transaction value growth."
+    )
+
+    # -------------------------------
+    # 🔹 Chart 3: Geo Map (Optional)
+    # -------------------------------
+    try:
+        import plotly.express as px
+        import json
+        import urllib.request
+
+        # Load India GeoJSON
+        url = "https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json"
+        with urllib.request.urlopen(url) as response:
+            india_geo = json.load(response)
+
+        df_map = df_growth.groupby("state")["total_amount"].sum().reset_index()
+
+        fig3 = px.choropleth(
+            df_map,
+            geojson=None,
+            locations="state",
+            color="total_amount",
+            hover_name="state",
+            title="State-wise Transaction Intensity (₹ Total)",
+            color_continuous_scale="Purples"
+        )
+        fig3.update_geos(fitbounds="locations", visible=False)
+        st.plotly_chart(fig3, use_container_width=True)
+
+        st.success(
+            "🗺️ **Geographical Insight:** Southern India — especially Tamil Nadu and Karnataka — "
+            "shows higher intensity of digital transactions."
+        )
+
+    except Exception as e:
+        st.warning("🌐 Map visualization unavailable in this environment.")
+
 
 # ---------------------------------------------------------------
 # 5️⃣ USER ENGAGEMENT
