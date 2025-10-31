@@ -133,34 +133,78 @@ if menu == "🏠 Dashboard Overview":
 # ---------------------------------------------------------------
 # 1️⃣ TRANSACTION DYNAMICS
 # ---------------------------------------------------------------
+# ---------------------------------------------------------------
+# 1️⃣ TRANSACTION DYNAMICS (Advanced)
+# ---------------------------------------------------------------
 elif menu == "1️⃣ Transaction Dynamics":
     st.title("📈 Transaction Dynamics Across States")
 
     df_state = data["txn_state"].copy()
     df_cat = data["txn_category"].copy()
 
+    # Clean & standardize
+    for df in [df_state, df_cat]:
+        df.columns = df.columns.str.strip().str.lower()
+
+    rename_map = {
+        "total_value_in_crores": "total_amount",
+        "total_in_crores": "total_amount",
+        "total_value": "total_amount",
+        "category_name": "category",
+        "name": "category"
+    }
+    df_cat.rename(columns=rename_map, inplace=True)
+    df_state.rename(columns=rename_map, inplace=True)
+
+    for col in ["total_amount"]:
+        if col in df_cat.columns:
+            df_cat[col] = pd.to_numeric(df_cat[col], errors="coerce")
+        if col in df_state.columns:
+            df_state[col] = pd.to_numeric(df_state[col], errors="coerce")
+
+    df_state = df_state[~df_state["state"].isin(["Total (India)", "Null", "None", "Nan"])]
+
+    # Chart 1 – Top 10 States
     fig1 = px.bar(
         df_state.sort_values("total_amount", ascending=False).head(10),
-        x="state",
-        y="total_amount",
-        color="total_amount",
-        title="Top 10 States by Transaction Value (₹ in Crores)",
-        text_auto=".2s"
+        x="state", y="total_amount", color="total_amount",
+        text_auto=".2s",
+        hover_data={"state": True, "total_amount": ":,.2f"},
+        title="Top 10 States by Transaction Value (₹ in Crores)"
     )
+    fig1.update_traces(marker_line_width=1, marker_line_color="black")
     st.plotly_chart(fig1, use_container_width=True)
 
-    # Detect category/value columns
-    cat_cols = [c.lower() for c in df_cat.columns]
-    name_col = next((c for c in ["category", "name", "payment_category"] if c in cat_cols), df_cat.columns[0])
-    value_col = next((c for c in ["total_amount", "total_value_in_crores", "total_value", "total_in_crores"] if c in cat_cols), None)
+    # Chart 2 – Category Distribution
+    if "category" in df_cat.columns and "total_amount" in df_cat.columns:
+        total_sum = df_cat["total_amount"].sum()
+        df_cat["share_%"] = (df_cat["total_amount"] / total_sum) * 100
 
-    if value_col:
-        fig2 = px.pie(df_cat, values=value_col, names=name_col, title="Transaction Split by Category")
+        fig2 = px.bar(
+            df_cat.sort_values("total_amount", ascending=False),
+            x="category", y="total_amount",
+            color="share_%", text_auto=".2s",
+            hover_data={"share_%": ":.2f"},
+            title="Distribution of Transaction Categories (Share %)"
+        )
+        fig2.update_layout(xaxis_title="Transaction Category", yaxis_title="Total Value (₹ Crores)")
         st.plotly_chart(fig2, use_container_width=True)
 
+        top_cat = df_cat.loc[df_cat["total_amount"].idxmax()]
+        st.success(
+            f"💡 **Insight:** '{top_cat['category']}' is the most used category, "
+            f"contributing {top_cat['share_%']:.2f}% of all transactions nationwide."
+        )
+
+    # Summary insight
     top_state = df_state.loc[df_state["total_amount"].idxmax()]
-    st.success(
-        f"💡 **Insight:** {top_state['state']} recorded the highest transaction value — ₹{top_state['total_amount']:.2f} Cr."
+    total_amount_all = df_state["total_amount"].sum()
+    share = (top_state["total_amount"] / total_amount_all) * 100
+
+    st.info(
+        f"📊 **Insight:** {top_state['state']} contributes ₹{top_state['total_amount']:.2f} Cr "
+        f"({share:.2f}% of total India transactions). "
+        f"Total across all states: ₹{total_amount_all:,.2f} Cr."
     )
 
 # ---------------------------------------------------------------
@@ -191,27 +235,74 @@ elif menu == "2️⃣ Device Dominance":
 # ---------------------------------------------------------------
 # 3️⃣ INSURANCE PENETRATION
 # ---------------------------------------------------------------
+# ---------------------------------------------------------------
+# 3️⃣ INSURANCE PENETRATION (Advanced)
+# ---------------------------------------------------------------
 elif menu == "3️⃣ Insurance Penetration":
     st.title("🧾 Insurance Penetration Across States")
 
     df_ins = data["insurance_state"].copy()
-    df_ins = df_ins.sort_values("total_amount", ascending=False)
+    df_ins.columns = df_ins.columns.str.strip().str.lower()
 
+    rename_map = {
+        "total_value_in_crores": "total_amount",
+        "total_in_crores": "total_amount",
+        "total_value": "total_amount",
+        "total_policies": "policy_count",
+        "count": "policy_count"
+    }
+    df_ins.rename(columns=rename_map, inplace=True)
+
+    df_ins["total_amount"] = pd.to_numeric(df_ins["total_amount"], errors="coerce")
+    df_ins["policy_count"] = pd.to_numeric(df_ins["policy_count"], errors="coerce")
+    df_ins.dropna(subset=["state"], inplace=True)
+    df_ins = df_ins[~df_ins["state"].isin(["Total (India)", "Null", "None", "Nan"])]
+
+    # Average policy value
+    df_ins["avg_policy_value"] = df_ins["total_amount"] / df_ins["policy_count"]
+
+    # Chart 1 – Top 10 States by Total Premium Value
     fig = px.bar(
-        df_ins.head(10),
-        x="state",
-        y="total_amount",
-        color="total_amount",
-        title="Top 10 States by Insurance Premium Value (₹ in Crores)",
-        text_auto=".2s"
+        df_ins.sort_values("total_amount", ascending=False).head(10),
+        x="state", y="total_amount", color="avg_policy_value",
+        text_auto=".2s",
+        hover_data={"policy_count": ":,.0f", "avg_policy_value": ":,.2f"},
+        title="Top 10 States by Insurance Premium Value (₹ in Crores)"
     )
+    fig.update_layout(xaxis_title="State", yaxis_title="Total Insurance Value (₹ Crores)")
     st.plotly_chart(fig, use_container_width=True)
 
+    # Insight 1
     top_state = df_ins.loc[df_ins["total_amount"].idxmax()]
     st.success(
-        f"💡 **Insight:** {top_state['state']} leads insurance penetration with ₹{top_state['total_amount']:.2f} Cr "
-        f"across {int(top_state['policy_count']):,} total policies."
+        f"💡 **Insight:** {top_state['state']} leads with ₹{top_state['total_amount']:.2f} Cr "
+        f"across {int(top_state['policy_count']):,} policies "
+        f"(avg ₹{top_state['avg_policy_value']:.2f} per policy)."
     )
+
+    # Chart 2 – Average Policy Value by State
+    fig2 = px.bar(
+        df_ins.sort_values("avg_policy_value", ascending=False).head(10),
+        x="state", y="avg_policy_value",
+        color="avg_policy_value", text_auto=".2f",
+        title="Average Policy Value by State (₹ per Policy)"
+    )
+    st.plotly_chart(fig2, use_container_width=True)
+
+    # Regional comparison (South vs North)
+    southern_states = ["Tamil Nadu", "Karnataka", "Kerala", "Andhra Pradesh", "Telangana"]
+    south_avg = df_ins[df_ins["state"].isin(southern_states)]["total_amount"].mean()
+    north_avg = df_ins[~df_ins["state"].isin(southern_states)]["total_amount"].mean()
+
+    diff = ((south_avg - north_avg) / north_avg) * 100
+    if diff > 0:
+        st.info(
+            f"📍 **Regional Insight:** Southern India shows {diff:.2f}% higher insurance penetration than northern states."
+        )
+    else:
+        st.info(
+            f"📍 **Regional Insight:** Northern regions slightly outperform southern states in insurance values."
+        )
 
 # ---------------------------------------------------------------
 # 4️⃣ MARKET EXPANSION
