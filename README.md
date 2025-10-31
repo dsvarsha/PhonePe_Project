@@ -1,223 +1,172 @@
-💳 PhonePe Business Analytics Dashboard
-📊 End-to-End Data Analysis and Visualization using Python, MySQL, and Streamlit
-👩‍💻 Developed by: Varsha Sureshkumar
+💜 PhonePe Business Analytics Dashboard | 2025
+Developed by: Varsha Sureshkumar
 
+B.E. Electronics & Communication Engineering
+KGiSL Institute of Technology | Coimbatore
 📧 Email: varshasuresh0708@gmail.com
 
-🎓 Department: Electronics and Communication Engineering
-🏫 Institution: KGiSL Institute of Technology
+🌐 Live Dashboard on Streamlit
 
-📖 Table of Contents
+💻 GitHub Repository
 
-Overview
+🪄 Project Overview
 
-Goal
+This project presents a comprehensive data analytics pipeline for the PhonePe Pulse Dataset, focused on understanding digital payment trends, user engagement, and insurance growth across India.
 
-Guide
+The entire process — from data extraction (ETL) to interactive dashboard visualization — was automated using Python, MySQL, and Streamlit.
 
-Documentation
+🎯 Objectives
 
-Architecture
+Automate the ETL (Extract–Transform–Load) process for PhonePe data extraction and storage.
 
-Database Schema
+Normalize and store JSON data into a MySQL database using Python.
 
-Dashboard Features
+Generate aggregated datasets (transactions, users, insurance, districts).
 
-Business Case Studies
+Build a Streamlit dashboard to visualize state & district-level insights.
 
-Insights & Findings
+Perform 5 business case studies with meaningful insights and recommendations.
 
-Future Scope
+Deploy the dashboard using Streamlit Cloud and integrate with GitHub.
 
-Installation Guide
+⚙️ Tech Stack
+Category	Tools & Technologies
+Programming	Python (Pandas, JSON, NumPy)
+Database	MySQL
+Visualization	Streamlit, Plotly, Power BI
+ETL Automation	Python + MySQL Connector
+Version Control	Git, GitHub
+Frontend Design	HTML, CSS, UI/UX (Figma)
+Other Tools	Microsoft Excel, SAP (Data Migration)
+🧩 Project Architecture
+PhonePe_Project/
+│
+├── pulse-master/                  # Raw JSON data from PhonePe Pulse
+├── phonepe_etl_full.py            # Full ETL pipeline (Extract, Transform, Load)
+├── mysql_test.py                  # MySQL connection tester
+├── analysis_results/              # Processed CSV files for visualization
+│   ├── top_states_transaction.csv
+│   ├── transaction_by_category.csv
+│   ├── top_states_users.csv
+│   ├── top_states_insurance.csv
+│   ├── top_districts_transaction.csv
+│
+├── dashboard_phonepe_pro.py       # Streamlit dashboard (visualization layer)
+├── README.md                      # Project documentation
+└── Project_Report.pdf / .pptx     # Supporting files for submission
 
-Data Source
+🛠️ ETL Pipeline Summary
+🔹 Step 1: Extraction
 
-License
+Parsed 9,000+ JSON files from the PhonePe Pulse dataset using Python.
 
-Author
+Extracted data for:
 
-🏗️ Overview
+Aggregated Transactions
 
-The PhonePe Business Analytics Dashboard is a complete data engineering and visualization project that analyzes India’s digital payments landscape using open-source PhonePe Pulse data.
+Aggregated Users
 
-This project implements an ETL pipeline (Extract, Transform, Load) to convert raw JSON data into an organized MySQL database, and visualizes the findings interactively using Streamlit and Plotly.
+Aggregated Insurance
 
-🎯 Goal
+Map and Top transaction data (state/district/pincode)
 
-To design and develop a scalable analytics platform that:
+🔹 Step 2: Transformation
 
-Extracts and transforms raw JSON data into structured relational databases.
+Cleaned JSON records.
 
-Enables interactive, real-time visualization of financial and user data.
+Normalized structure and formatted data types (amounts, counts).
 
-Provides business insights for understanding digital transaction trends in India.
+Removed duplicates and null states.
 
-🧭 Guide
+🔹 Step 3: Loading
 
-This project is categorized into three data modules derived from the PhonePe Pulse dataset:
+Stored all processed data into MySQL (phonepe_db) across 9 structured tables.
 
-Module	Description
-Aggregated Data	Summarized data of transactions, users, and insurance trends.
-Map Data	Regional data distribution across states and districts.
-Top Data	Lists top-performing states, districts, and pin codes by volume and value.
-📘 Documentation
+Tables: aggregated_transaction, map_user, map_insurance, top_transaction, etc.
 
-Dataset: PhonePe Pulse - Open Data Platform
+🔹 Step 4: CSV Export
 
-Format: JSON
+Queried MySQL to extract summarized datasets for visualization.
 
-Coverage: 2018–2024
+Saved outputs as:
 
-Domains: Transactions, Users, Insurance
+top_states_transaction.csv
 
-License: CDLA-Permissive-2.0
+top_states_users.csv
 
-🧩 Architecture
-1️⃣ Data Extraction
+top_states_insurance.csv
 
-Extracted JSON data directly from the PhonePe Pulse GitHub repository.
+transaction_by_category.csv
 
-Parsed and processed multiple JSON structures using Python scripts.
+top_districts_transaction.csv
 
-2️⃣ Data Transformation
+📊 Dashboard Modules (Streamlit)
+Module	Description	Output
+🏠 Dashboard Overview	Summary of pipeline and objectives	Overview page
+1️⃣ Transaction Dynamics	Top states & categories by value	Bar & Pie Charts
+2️⃣ Device Dominance	Registered users by state/device	Bar Chart
+3️⃣ Insurance Penetration	Top states by insurance value	Bar Chart
+4️⃣ Market Expansion	District-level performance	Bar Chart
+5️⃣ User Engagement	Engagement ratio by state	Line Chart
+🧠 Insights Summary	Key findings and business insights	Summary text
+📚 Business Case Studies
 
-Cleaned, standardized, and structured the raw data using Pandas.
+1️⃣ Decoding Transaction Dynamics
+→ Karnataka, Maharashtra, and Tamil Nadu lead with the highest transaction volumes.
 
-Created structured DataFrames for each analytical category.
+2️⃣ Device Dominance and User Engagement
+→ Majority of PhonePe users are on Android (Xiaomi, Samsung); strong adoption in Tier-1 states.
 
-3️⃣ Data Loading
+3️⃣ Insurance Penetration and Growth Potential
+→ Southern states show high insurance uptake; opportunity in Northern regions.
 
-Built a MySQL database consisting of 9 structured tables.
+4️⃣ Market Expansion Trends
+→ Tier-2 cities and districts like Bihar, MP, and Rajasthan show emerging market potential.
 
-Automated data loading with MySQL Connector (9000+ records processed).
+5️⃣ User Engagement & Retention Strategy
+→ Metro users exhibit higher app engagement; reward programs can increase loyalty.
 
-4️⃣ Visualization
+📈 Key Insights
 
-Designed an interactive dashboard using Streamlit and Plotly.
+💸 Karnataka and Maharashtra are the top-performing states by transaction value.
 
-Added filtering features for year, quarter, category, and state.
+📱 Xiaomi and Samsung dominate user device registrations.
 
-5️⃣ Deployment
+🧾 Insurance adoption is highest in Southern India.
 
-Hosted live on Streamlit Cloud for easy public access.
+🌍 Bihar and MP show high growth in Tier-2 expansion.
 
-Integrated GitHub for continuous version management and updates.
+👥 User retention is driven by app trust and usage frequency.
 
-🧮 Database Schema
-Table	Description
-aggregated_transaction	Quarterly transaction data by type and category.
-aggregated_user	User registration and app engagement metrics.
-aggregated_insurance	Insurance transaction records by region.
-map_transaction	State and district-level transaction distribution.
-map_user	Regional user base and app activity.
-map_insurance	State-wise insurance analytics.
-top_transaction	Top states and districts by transaction value.
-top_user	Top states/districts by user registrations.
-top_insurance	Leading states in insurance adoption.
-🖥️ Dashboard Features
+🚀 Deployment
 
-📊 Transaction Trends: Quarterly and category-wise analytics.
+Hosted on Streamlit Cloud
 
-👥 User Insights: Registered users and app opens by device brand.
+Linked directly to the GitHub repository for continuous updates
 
-🛡️ Insurance Analytics: Policy adoption patterns and growth.
+Automatically refreshes upon each commit
 
-🌍 Geographical View: Interactive maps by state and district.
+🔗 View Live Dashboard
 
-🕒 Time Trends: Analyze by year, quarter, and region.
+🧠 Future Scope
 
-⚙️ Dynamic Filters: Easily toggle data views for deeper insights.
+Integration of real-time API data feeds.
 
-📈 Business Case Studies
-Case Study	Description
-1. Transaction Dynamics	Study of growth patterns and category shifts in digital payments.
-2. Device Dominance	Analysis of user engagement across device brands.
-3. Insurance Penetration	Regional analysis of insurance adoption.
-4. Market Expansion	Identifying underperforming but high-potential regions.
-5. User Engagement	Tracking user registrations and app opens per region.
-📊 Insights & Findings
+AI-driven predictive analytics for transaction forecasting.
 
-Karnataka, Maharashtra, and Telangana dominate India’s digital payments landscape.
+State-wise anomaly detection using ML models.
 
-UPI transactions show steady growth every quarter.
-
-Android is the most preferred platform for PhonePe usage.
-
-Insurance adoption is increasing rapidly in Tier-2 regions.
-
-The dashboard enables instant, real-time data exploration.
-
-🚀 Future Scope
-
-This project can be enhanced with the following advanced features:
-
-🧠 Machine Learning Integration: Predict future transaction trends using regression or time-series forecasting models.
-
-📡 Real-Time API Integration: Connect with live UPI or fintech APIs for streaming transaction data.
-
-📊 Power BI Dashboard Expansion: Create enterprise-level visualization dashboards for deeper analytics.
-
-🗺️ Advanced Geospatial Mapping: Integrate Plotly Mapbox or Folium for granular location-based visualization.
-
-🔐 User Authentication: Enable role-based access for personalized dashboards.
-
-💬 AI Insights Engine: Incorporate NLP models to automatically summarize insights from datasets.
-
-These upgrades would transform the dashboard into a smart fintech analytics platform, bridging data science, IoT, and business intelligence.
-
-⚙️ Installation Guide
-1️⃣ Clone the Repository
-git clone https://github.com/dsvarsha/PhonePe_Project.git
-
-2️⃣ Open the Folder
-cd PhonePe_Project
-
-3️⃣ Install Dependencies
-pip install -r requirements.txt
-
-4️⃣ Run the Application
-streamlit run dashboard_phonepe_pro.py
-
-5️⃣ View the Dashboard
-
-Open your browser and go to → http://localhost:8501
-
-🌐 Live Dashboard
-
-🎯 Access the live deployed dashboard here:
-🔗 PhonePe Business Analytics Dashboard
-
-📊 Data Source
-
-Dataset: PhonePe Pulse Open Data Repository
-
-License: CDLA-Permissive-2.0
-
-Update Frequency: Quarterly
-
-Data Categories: Transactions, Users, Insurance
-
-🧑‍💻 Author
-
-Varsha Sureshkumar
-🎓 ECE Undergraduate | KGiSL Institute of Technology
-📧 varshasuresh0708@gmail.com
-
-🔗 GitHub Profile
-
-📜 License
-
-Licensed under the CDLA-Permissive-2.0 License.
-Developed for academic and research purposes only.
+Enhanced interactive visuals with Power BI or Tableau.
 
 🏁 Conclusion
 
-The PhonePe Business Analytics Dashboard demonstrates a seamless integration of data extraction, transformation, and visualization using real-world fintech data.
-It bridges technical expertise from electronics, software, and data analytics, showcasing Varsha’s ability to develop scalable, data-driven solutions for financial intelligence.
+This project demonstrates the end-to-end implementation of a data analytics solution,
+covering everything from ETL automation to visualization.
 
-✅ “Transforming Data into Insights, and Insights into Innovation.”
+It highlights PhonePe’s digital payment ecosystem, offering valuable insights into
+regional performance, device usage, and insurance growth — bridging technology, data,
+and business strategy effectively. 💜
 
-🪩 Keywords
+📄 License
 
-Python • MySQL • Streamlit • Plotly • Data Analytics • ETL • Fintech • Business Intelligence • Power BI • IoT
+This project is open-source under the CDLA Permissive License v2.0, in alignment with the official PhonePe Pulse Dataset
